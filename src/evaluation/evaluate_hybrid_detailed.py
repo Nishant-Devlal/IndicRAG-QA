@@ -23,10 +23,11 @@ def recall_at_k(retrieved_chunks, relevant_chunks, k):
     retrieved = retrieved_chunks[:k]
     return any(chunk in relevant_chunks for chunk in retrieved)
 
-def reciprocal_rank(retrieved_chunks,  relevant_chunks):
+def reciprocal_rank(retrieved_chunks, relevant_chunks):
     for rank, chunk in enumerate(retrieved_chunks, start=1):
         if chunk in relevant_chunks:
             return 1 / rank
+
     return 0.0
 
 def calculate_metrics(question_results):
@@ -42,7 +43,7 @@ def calculate_metrics(question_results):
     r1 = np.mean([q["recall@1"] for q in question_results])
     r3 = np.mean([q["recall@3"] for q in question_results])
     r5 = np.mean([q["recall@5"] for q in question_results])
-    mrr = np.mean([q["reciprocal_rank"]  for q in question_results])
+    mrr = np.mean([q["reciprocal_rank"] for q in question_results])
 
     return {
         "questions": len(question_results),
@@ -59,7 +60,14 @@ def evaluate_questions(retriever, questions):
         relevant_chunks = set(qa["supporting_chunks"])
         retrieved_results = retriever.search(question, top_k=TOP_K, candidate_k=CANDIDATE_K)
         retrieved_chunks = [result["chunk_id"] for result in retrieved_results]
-
+        hybrid_scores = [
+            {
+                "chunk_id": result["chunk_id"],
+                "score": result.get("hybrid_score", result.get("rrf_score", 0.0))
+            }
+            for result in retrieved_results
+        ]
+        top_hybrid_score = (hybrid_scores[0]["score"] if hybrid_scores else 0.0)
         hit_1 = recall_at_k(retrieved_chunks, relevant_chunks, 1)
         hit_3 = recall_at_k(retrieved_chunks, relevant_chunks, 3)
         hit_5 = recall_at_k(retrieved_chunks, relevant_chunks, 5)
@@ -72,8 +80,11 @@ def evaluate_questions(retriever, questions):
             "query_type": qa["query_type"],
             "difficulty": qa["difficulty"],
             "category": qa["category"],
+            "answerable": qa["answerable"],
             "supporting_chunks": list(relevant_chunks),
             "retrieved_chunks": retrieved_chunks,
+            "hybrid_scores": hybrid_scores,
+            "top_hybrid_score": top_hybrid_score,
             "recall@1": hit_1,
             "recall@3": hit_3,
             "recall@5": hit_5,
@@ -86,17 +97,19 @@ def group_results(question_results, field):
     groups = {}
     for result in question_results:
         value = result.get(field)
+
         if value is None:
             value = "unknown"
+
         if value not in groups:
             groups[value] = []
 
         groups[value].append(result)
 
     grouped_metrics = {}
-
+    
     for value, results in groups.items():
-        grouped_metrics[value] = calculate_metrics(results)
+        grouped_metrics[value] = (calculate_metrics(results))
 
     return grouped_metrics
 
@@ -130,29 +143,20 @@ def main():
 
     passages = load_json(PASSAGES_FILE)
     qa_dataset = load_json(QA_FILE)
-
     answerable_questions = [q for q in qa_dataset if q["answerable"]]
-
     print(f"\nTotal questions       : {len(qa_dataset)}")
     print(f"Answerable questions : {len(answerable_questions)}")
     print(f"Unanswerable questions : {len(qa_dataset) - len(answerable_questions)}")
-
     print("\nInitializing weighted hybrid retriever...")
 
     retriever = HybridRetriever(passages, tfidf_weight=TFIDF_WEIGHT, dense_weight=DENSE_WEIGHT)
-    
+
     print("\nEvaluating questions...")
-
     question_results = evaluate_questions(retriever, answerable_questions)
-
     overall = calculate_metrics(question_results)
-
     language_results = group_results(question_results, "language")
-
     query_type_results = group_results(question_results, "query_type")
-
     difficulty_results = group_results(question_results, "difficulty")
-
     category_results = group_results(question_results, "category")
 
     print("OVERALL RESULTS")
@@ -160,7 +164,7 @@ def main():
     print(f"Recall@3 : {overall['recall@3']:.4f} ({overall['recall@3'] * 100:.2f}%)")
     print(f"Recall@5 : {overall['recall@5']:.4f} ({overall['recall@5'] * 100:.2f}%)")
     print(f"MRR      : {overall['mrr']:.4f}")
-    
+
     print_table("\nLANGUAGE-WISE RESULTS", language_results)
     print_table("\nQUERY-TYPE RESULTS", query_type_results)
     print_table("\nDIFFICULTY-WISE RESULTS", difficulty_results)
@@ -177,7 +181,7 @@ def main():
         "dataset": {
             "total_questions": len(qa_dataset),
             "answerable_questions": len(answerable_questions),
-            "unanswerable_questions": len(qa_dataset)  - len(answerable_questions)
+            "unanswerable_questions": len(qa_dataset) - len(answerable_questions)
         },
         "overall": overall,
         "by_language": language_results,
@@ -188,11 +192,10 @@ def main():
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
     with open(RESULTS_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"Detailed results saved to:\n {RESULTS_FILE}")
+    print(f"\nDetailed results saved to:\n {RESULTS_FILE}")
 
 if __name__ == "__main__":
     main()

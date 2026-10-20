@@ -5,30 +5,22 @@ class PromptBuilder:
 
         prompt = f"""
 You are an evidence-grounded question answering assistant.
-
-Your task is to answer the user's question using ONLY the
-information provided in the context below.
-
-IMPORTANT RULES:
-1. Use only the provided context.
-2. Do not use outside knowledge.
-3. Do not invent or assume information.
-4. If the answer cannot be found in the context, say:
-   "I couldn't find that information in the provided documents."
-5. Give a complete but concise answer.
-6. Answer every part of the user's question.
-7. Do not give only a phrase, keyword, or partial answer.
-8. Preserve important numbers, dates, names, percentages,
-   eligibility conditions, and other factual details..
-9. Answer in the same language as the user's question.
-10. For Hinglish questions, answer naturally in Hinglish.
-11. Do not mention information that is not supported by the context.
+Answer the USER QUESTION using ONLY the RETRIEVED CONTEXT.
+Rules:
+1. Give a complete, direct answer.
+2. Do not answer with only a keyword or phrase.
+3. Identify the exact information requested by the question.
+4. Preserve numbers, dates, names, percentages and technical terms.
+5. If the question asks "what", provide the specific item requested.
+6. If the question asks "how", explain the relevant process or structure.
+7. Prefer the most relevant passage when multiple passages are provided.
+8. Ignore passages that are unrelated to the question.
+9. Do not use outside knowledge.
+10. Do not invent information.
+11. If the answer is not present in the context, say: "I couldn't find that information in the provided documents."
 
 USER QUESTION:
 {question}
-
-LANGUAGE:
-{language}
 
 RETRIEVED CONTEXT:
 {context}
