@@ -55,25 +55,46 @@ def calculate_metrics(question_results):
 
 def evaluate_questions(retriever, questions):
     results = []
-    for qa in questions:
+    for index, qa in enumerate(questions, start=1):
         question = qa["question"]
-        relevant_chunks = set(qa["supporting_chunks"])
+        print(
+            f"\rEvaluating question "
+            f"{index}/{len(questions)}",
+            end="",
+            flush=True
+        )
+
+        relevant_chunks = set(qa.get("supporting_chunks", []))
         retrieved_results = retriever.search(question, top_k=TOP_K, candidate_k=CANDIDATE_K)
         retrieved_chunks = [result["chunk_id"] for result in retrieved_results]
+
         hybrid_scores = [
             {
                 "chunk_id": result["chunk_id"],
-                "score": result.get("hybrid_score", result.get("rrf_score", 0.0))
+                "score": float(result.get("hybrid_score", result.get("rrf_score", 0.0)))
             }
             for result in retrieved_results
         ]
-        top_hybrid_score = (hybrid_scores[0]["score"] if hybrid_scores else 0.0)
-        hit_1 = recall_at_k(retrieved_chunks, relevant_chunks, 1)
-        hit_3 = recall_at_k(retrieved_chunks, relevant_chunks, 3)
-        hit_5 = recall_at_k(retrieved_chunks, relevant_chunks, 5)
-        rr = reciprocal_rank(retrieved_chunks, relevant_chunks)
 
-        results.append({
+        if hybrid_scores:
+            top_hybrid_score = (hybrid_scores[0]["score"])
+
+        else:
+            top_hybrid_score = 0.0
+
+        if qa["answerable"]:
+            hit_1 = recall_at_k(retrieved_chunks, relevant_chunks, 1)
+            hit_3 = recall_at_k(retrieved_chunks, relevant_chunks, 3)
+            hit_5 = recall_at_k(retrieved_chunks, relevant_chunks, 5)
+            rr = reciprocal_rank(retrieved_chunks, relevant_chunks)
+
+        else:
+            hit_1 = None
+            hit_3 = None
+            hit_5 = None
+            rr = None
+
+        result = {
             "question_id": qa["question_id"],
             "question": qa["question"],
             "language": qa["language"],
@@ -89,13 +110,19 @@ def evaluate_questions(retriever, questions):
             "recall@3": hit_3,
             "recall@5": hit_5,
             "reciprocal_rank": rr
-        })
+        }
+        results.append(result)
+
+    print("\n")
 
     return results
 
-def group_results(question_results, field):
+def group_results(question_results, field, answerable_only=True):
     groups = {}
     for result in question_results:
+        if answerable_only and not result["answerable"]:
+            continue
+
         value = result.get(field)
 
         if value is None:
@@ -107,14 +134,14 @@ def group_results(question_results, field):
         groups[value].append(result)
 
     grouped_metrics = {}
-    
+
     for value, results in groups.items():
-        grouped_metrics[value] = (calculate_metrics(results))
+        grouped_metrics[value] = calculate_metrics(results)
 
     return grouped_metrics
 
 def print_table(title, grouped_results):
-    print(title)
+    print("\n" + title)
     print(
         f"{'Group':<30}"
         f"{'Questions':>10}"
@@ -134,6 +161,17 @@ def print_table(title, grouped_results):
             f"{metrics['mrr']:>10.4f}"
         )
 
+def calculate_answerability_summary(question_results):
+    total = len(question_results)
+    answerable = sum(1 for q in question_results if q["answerable"])
+    unanswerable = total - answerable
+
+    return {
+        "total_questions": total,
+        "answerable_questions": answerable,
+        "unanswerable_questions": unanswerable
+    }
+
 def main():
     print("WEIGHTED HYBRID DETAILED EVALUATION")
     print(f"\nTF-IDF weight : {TFIDF_WEIGHT}")
@@ -141,34 +179,54 @@ def main():
     print(f"Candidate K   : {CANDIDATE_K}")
     print(f"Top K         : {TOP_K}")
 
+    print("\nLoading passages...")
     passages = load_json(PASSAGES_FILE)
+    print(f"Loaded {len(passages)} passages.")
+    
+    print("\nLoading QA dataset...")
     qa_dataset = load_json(QA_FILE)
-    answerable_questions = [q for q in qa_dataset if q["answerable"]]
-    print(f"\nTotal questions       : {len(qa_dataset)}")
-    print(f"Answerable questions : {len(answerable_questions)}")
-    print(f"Unanswerable questions : {len(qa_dataset) - len(answerable_questions)}")
-    print("\nInitializing weighted hybrid retriever...")
+    print(f"Loaded {len(qa_dataset)} questions.")
 
+    answerable_questions = [q for q in qa_dataset if q["answerable"]]
+    unanswerable_questions = [q for q in qa_dataset if not q["answerable"]]
+    print(f"\nTotal questions        : {len(qa_dataset)}")
+    print(f"Answerable questions  : {len(answerable_questions)}")
+    print(f"Unanswerable questions: {len(unanswerable_questions)}")
+    
+    print("\nInitializing weighted hybrid retriever...")
     retriever = HybridRetriever(passages, tfidf_weight=TFIDF_WEIGHT, dense_weight=DENSE_WEIGHT)
 
-    print("\nEvaluating questions...")
-    question_results = evaluate_questions(retriever, answerable_questions)
-    overall = calculate_metrics(question_results)
-    language_results = group_results(question_results, "language")
-    query_type_results = group_results(question_results, "query_type")
-    difficulty_results = group_results(question_results, "difficulty")
-    category_results = group_results(question_results, "category")
+    print("\nEvaluating ALL questions...")
 
-    print("OVERALL RESULTS")
-    print(f"\nRecall@1 : {overall['recall@1']:.4f} ({overall['recall@1'] * 100:.2f}%)")
+    question_results = evaluate_questions(retriever, qa_dataset)
+
+    answerable_results = [q for q in question_results if q["answerable"]]
+
+    overall = calculate_metrics(answerable_results)
+
+    language_results = group_results(question_results, "language", answerable_only=True)
+    query_type_results = group_results(question_results, "query_type", answerable_only=True)
+    difficulty_results = group_results(question_results, "difficulty", answerable_only=True)
+    category_results = group_results(question_results, "category", answerable_only=True)
+
+    print("OVERALL RETRIEVAL RESULTS")
+    print(f"\nAnswerable questions evaluated : {overall['questions']}")
+    print(f"Recall@1 : {overall['recall@1']:.4f} ({overall['recall@1'] * 100:.2f}%)")
     print(f"Recall@3 : {overall['recall@3']:.4f} ({overall['recall@3'] * 100:.2f}%)")
     print(f"Recall@5 : {overall['recall@5']:.4f} ({overall['recall@5'] * 100:.2f}%)")
     print(f"MRR      : {overall['mrr']:.4f}")
 
-    print_table("\nLANGUAGE-WISE RESULTS", language_results)
-    print_table("\nQUERY-TYPE RESULTS", query_type_results)
-    print_table("\nDIFFICULTY-WISE RESULTS", difficulty_results)
-    print_table("\nCATEGORY-WISE RESULTS", category_results)
+    print_table("LANGUAGE-WISE RESULTS", language_results)
+    print_table("QUERY-TYPE RESULTS", query_type_results)
+    print_table("DIFFICULTY-WISE RESULTS", difficulty_results)
+    print_table("CATEGORY-WISE RESULTS", category_results)
+
+    answerability_summary = (calculate_answerability_summary(question_results))
+
+    print("ANSWERABILITY SUMMARY")
+    print(f"\nTotal        : {answerability_summary['total_questions']}")
+    print(f"Answerable   : {answerability_summary['answerable_questions']}")
+    print(f"Unanswerable : {answerability_summary['unanswerable_questions']}")
 
     output = {
         "method": "Weighted Hybrid",
@@ -181,8 +239,9 @@ def main():
         "dataset": {
             "total_questions": len(qa_dataset),
             "answerable_questions": len(answerable_questions),
-            "unanswerable_questions": len(qa_dataset) - len(answerable_questions)
+            "unanswerable_questions": len(unanswerable_questions)
         },
+        "answerability_summary": answerability_summary,
         "overall": overall,
         "by_language": language_results,
         "by_query_type": query_type_results,
@@ -195,7 +254,8 @@ def main():
     with open(RESULTS_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"\nDetailed results saved to:\n {RESULTS_FILE}")
+    print("\nDetailed results saved to:")
+    print(RESULTS_FILE)
 
 if __name__ == "__main__":
     main()
