@@ -9,8 +9,8 @@ QA_FILE = (PROJECT_ROOT / "data" / "qa_dataset" / "qa_dataset.json")
 RESULTS_DIR = PROJECT_ROOT / "results"
 RESULTS_FILE = (RESULTS_DIR / "hybrid_detailed_results.json")
 
-TFIDF_WEIGHT = 0.7
-DENSE_WEIGHT = 0.3
+TFIDF_WEIGHT = 0.9
+DENSE_WEIGHT = 0.1
 
 TOP_K = 5
 CANDIDATE_K = 10

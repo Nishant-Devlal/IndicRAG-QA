@@ -29,7 +29,7 @@ def main():
     qa_data = load_json(QA_FILE)
     passages_data = load_json(PASSAGES_FILE)
 
-    print(f"\nQA questions loaded     : {len(qa_data)}")
+    print(f"\nQA questions loaded   : {len(qa_data)}")
     print(f"Passages loaded         : {len(passages_data)}")
 
     errors = []
@@ -132,8 +132,7 @@ def main():
             if chunk_id not in passage_ids:
                 errors.append(f"{qid}: supporting chunk does not exist: {chunk_id}")
 
-    answerable_count = sum(
-        1 for q in qa_data
+    answerable_count = sum(1 for q in qa_data
         if q.get("answerable") is True
     )
 
@@ -188,7 +187,7 @@ def main():
         print(f"{len(errors)} error(s) found.")
         print("\nERRORS:")
         for error in errors:
-            print(f"❌ {error}")
+            print(f"{error}")
 
     else:
         print("\nVALIDATION PASSED")
@@ -197,7 +196,7 @@ def main():
     if warnings:
         print("\nWARNINGS:")
         for warning in warnings:
-            print(f"⚠️ {warning}")
+            print(f"{warning}")
 
 if __name__ == "__main__":
     main()

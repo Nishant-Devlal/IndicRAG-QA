@@ -9,8 +9,8 @@ QA_FILE = PROJECT_ROOT / "data" / "qa_dataset" / "qa_dataset.json"
 RESULTS_DIR = PROJECT_ROOT / "results"
 RESULTS_FILE = RESULTS_DIR / "hybrid_results.json"
 
-TFIDF_WEIGHT = 0.7
-DENSE_WEIGHT = 0.3
+TFIDF_WEIGHT = 0.9
+DENSE_WEIGHT = 0.1
 
 CANDIDATE_K = 10
 TOP_K = 5
@@ -126,25 +126,10 @@ def main():
             "top_hybrid_score": top_hybrid_score,
             "second_hybrid_score": second_hybrid_score,
             "score_gap": score_gap,
-
-            "mean_hybrid_score": (
-                float(np.mean(hybrid_scores))
-                if hybrid_scores else 0.0
-            ),
-
-            "max_tfidf_score": (
-                max(tfidf_scores) if tfidf_scores else 0.0
-            ),
-
-            "max_dense_score": (
-                max(dense_scores) if dense_scores else 0.0
-            ),
-
-            "strong_results_070": sum(
-                score >= 0.70 for score in hybrid_scores
-            ),
-
-            # Retrieval metrics.
+            "mean_hybrid_score": (float(np.mean(hybrid_scores)) if hybrid_scores else 0.0),
+            "max_tfidf_score": (max(tfidf_scores) if tfidf_scores else 0.0),
+            "max_dense_score": (max(dense_scores) if dense_scores else 0.0),
+            "strong_results_070": sum(score >= 0.70 for score in hybrid_scores),
             "recall@1": hit_1,
             "recall@3": hit_3,
             "recall@5": hit_5,
@@ -154,111 +139,51 @@ def main():
         question_results.append(question_result)
 
         if index % 25 == 0 or index == total_questions:
-            print(
-                f"Processed {index}/{total_questions} questions..."
-            )
-
-    # --------------------------------------------------------
-    # Overall retrieval metrics
-    # --------------------------------------------------------
+            print(f"Processed {index}/{total_questions} questions...")
 
     overall = calculate_retrieval_metrics(question_results)
 
-    print("\n" + "=" * 65)
     print("RETRIEVAL RESULTS")
-    print("=" * 65)
-
-    print(
-        f"Questions evaluated: "
-        f"{overall['questions_evaluated']}"
-    )
-
-    print(
-        f"Recall@1 : {overall['recall@1']:.4f} "
-        f"({overall['recall@1'] * 100:.2f}%)"
-    )
-
-    print(
-        f"Recall@3 : {overall['recall@3']:.4f} "
-        f"({overall['recall@3'] * 100:.2f}%)"
-    )
-
-    print(
-        f"Recall@5 : {overall['recall@5']:.4f} "
-        f"({overall['recall@5'] * 100:.2f}%)"
-    )
-
+    print(f"Questions evaluated: {overall['questions_evaluated']}")
+    print(f"Recall@1 : {overall['recall@1']:.4f} ({overall['recall@1'] * 100:.2f}%)")
+    print(f"Recall@3 : {overall['recall@3']:.4f} ({overall['recall@3'] * 100:.2f}%)")
+    print(f"Recall@5 : {overall['recall@5']:.4f} ({overall['recall@5'] * 100:.2f}%)")
     print(f"MRR      : {overall['mrr']:.4f}")
 
-    # --------------------------------------------------------
-    # Dataset integrity checks
-    # --------------------------------------------------------
-
-    saved_answerable = sum(
-        1 for q in question_results if q["answerable"]
-    )
-
-    saved_unanswerable = sum(
-        1 for q in question_results if not q["answerable"]
-    )
+    saved_answerable = sum(1 for q in question_results if q["answerable"])
+    saved_unanswerable = sum(1 for q in question_results if not q["answerable"])
 
     assert len(question_results) == total_questions
     assert saved_answerable == answerable_count
     assert saved_unanswerable == unanswerable_count
 
-    # --------------------------------------------------------
-    # Save results
-    # --------------------------------------------------------
-
     output = {
         "method": "Weighted Hybrid",
-
         "parameters": {
             "tfidf_weight": TFIDF_WEIGHT,
             "dense_weight": DENSE_WEIGHT,
             "candidate_k": CANDIDATE_K,
             "top_k": TOP_K
         },
-
         "dataset": {
             "total_questions": total_questions,
             "answerable_questions": answerable_count,
             "unanswerable_questions": unanswerable_count
         },
-
         "overall": overall,
-
-        # Includes every answerable and unanswerable question.
         "questions": question_results
     }
 
-    RESULTS_DIR.mkdir(
-        parents=True,
-        exist_ok=True
-    )
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    with open(RESULTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
 
-    with open(
-        RESULTS_FILE,
-        "w",
-        encoding="utf-8"
-    ) as f:
-        json.dump(
-            output,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
-
-    print("\n" + "=" * 65)
-    print("EVALUATION COMPLETED")
-    print("=" * 65)
-
+    print("\nEVALUATION COMPLETED")
     print(f"Total saved questions : {len(question_results)}")
     print(f"Answerable            : {saved_answerable}")
     print(f"Unanswerable          : {saved_unanswerable}")
-
     print(f"\nResults saved to:\n{RESULTS_FILE}")
-
 
 if __name__ == "__main__":
     main()

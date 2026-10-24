@@ -53,7 +53,6 @@ def main():
     qa_dataset = load_json(QA_FILE)
 
     answerable_ids = {q["question_id"] for q in qa_dataset if q["answerable"]}
-
     unanswerable_ids = {q["question_id"] for q in qa_dataset if not q["answerable"]}
 
     print(f"\nTotal dataset questions : {len(qa_dataset)}")
@@ -100,7 +99,6 @@ def main():
         )
 
         for method, questions in methods.items():
-
             filtered_questions = [
                 q for q in questions.values()
                 if q["question_id"] in answerable_ids
