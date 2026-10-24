@@ -10,7 +10,7 @@ PASSAGES_FILE = (PROJECT_ROOT / "data" / "processed" / "passages.json")
 class DenseRetriever:
     def __init__(self, passages):
         self.passages = passages
-        self.model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+        self.model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
         self.texts = [passage["text"] for passage in passages]
         print("Creating embeddings...")
         

@@ -100,20 +100,7 @@ def main():
     print("HYBRID WEIGHT EXPERIMENT")
     print(f"\nAnswerable questions: {sum(q['answerable'] for q in qa_dataset)}")
 
-    weights = [
-        0.0,
-        0.1,
-        0.2,
-        0.3,
-        0.4,
-        0.5,
-        0.6,
-        0.7,
-        0.8,
-        0.9,
-        1.0
-    ]
-
+    weights = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     results = []
 
     print("\nTF-IDF Weight | Dense Weight | R@1 | R@3 | R@5 | MRR")
