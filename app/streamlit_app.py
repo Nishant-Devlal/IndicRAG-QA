@@ -133,7 +133,6 @@ def load_pipeline():
 with st.sidebar:
     st.title("📚 IndicRAG-QA")
     st.caption("Evidence-Grounded Cross-Lingual Question Answering")
-    st.divider()
     st.subheader("About the Project")
     st.write(
         "IndicRAG-QA is a domain-specific RAG chatbot "
@@ -148,7 +147,6 @@ with st.sidebar:
         - Hinglish
         """
     )
-    st.divider()
     if st.button("🗑️ Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
@@ -295,10 +293,10 @@ if question:
         }
     )
 
-    with st.chat_message("user", avatar="🧑🏼‍🦰"):
+    with st.chat_message("user"):
         st.markdown(question)
 
-    with st.chat_message("assistant", avatar="🤖"):
+    with st.chat_message("assistant"):
         try:
             with st.spinner("Retrieving evidence and preparing your answer..."):
                 pipeline = load_pipeline()
