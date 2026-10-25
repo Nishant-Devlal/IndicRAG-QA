@@ -25,7 +25,7 @@ class AnswerGenerator:
 
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                torch_dtype=torch.float32,
+                torch_dtype=torch.float16,
                 low_cpu_mem_usage=True,
             )
 
