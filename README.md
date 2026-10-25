@@ -51,3 +51,6 @@ Retrieval performance is evaluated using:
 - JSON: Dataset and result storage
 - PyPDF: Document processing
 - LLM: Answer generation
+
+## Screenshots
+<img width="1910" height="1078" alt="Screenshot 2026-10-25 064255" src="https://github.com/user-attachments/assets/6ce7dbd1-de6a-4a1e-9df0-fda113bfc6cf" />
