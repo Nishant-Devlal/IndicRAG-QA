@@ -4,8 +4,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 logger = logging.getLogger(__name__)
 
+# model_name="Qwen/Qwen2.5-1.5B-Instruct"
 class AnswerGenerator:
-    def __init__(self, model_name="Qwen/Qwen2.5-1.5B-Instruct", max_input_length=2048, max_output_length=128,):
+    def __init__(self, model_name="Qwen/Qwen2.5-0.5B-Instruct", max_input_length=2048, max_output_length=128,):
         self.model_name = model_name
         self.max_input_length = max_input_length
         self.max_output_length = max_output_length
