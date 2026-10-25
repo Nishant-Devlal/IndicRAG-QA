@@ -355,11 +355,8 @@ if question:
         except Exception as error:
             error_message = ("Something went wrong while processing your question. "
                              "Please check the terminal for the error details.")
-
             st.error(error_message)
-
             print("IndicRAG-QA error:", repr(error))
-
             st.session_state.messages.append(
                 {
                     "role": "assistant",

@@ -48,8 +48,9 @@ build/
 *.onnx
 
 # Large Generated Data
-data/processed/
-results/
+data/processed/*
+!data/processed/passages.json
+/results
 
 # Local experiment files
 experiments/
